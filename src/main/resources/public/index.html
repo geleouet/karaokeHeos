@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karaoke</title>
+    <style>
+        #karaoke {
+            font-size: 5em;
+            text-align: center;
+            padding: 20px;
+            z-index: 1; /* Pour placer devant la barre de progression */
+        }
+        .active {
+            font-size: 6rem;
+            font-weight: bold; /* Par exemple, mettre en gras */
+         
+        }
+        #progress-line {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2em;
+            background-color: #caf; /* Couleur de la barre de progression */
+            z-index: -1; /* Pour placer en arrière-plan du texte */
+        }
+        .doneActive {
+            color: #999;
+        }
+        #progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2em;
+            background-color: #ccc; /* Couleur de la barre de progression */
+            z-index: -1; /* Pour placer en arrière-plan du texte */
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h2 id="paroles">Paroles</h2>
+    </div>
+    <img id="cover">
+    <div id="karaoke"></div>
+    <div id="progress-bar"></div>
+    <div id="progress-line"></div>
+
+
+    <script>
+        var timeouts = [];
+        var intervals = [];
+        var startLine = 0
+        var durationLine = 1
+        // Créer une connexion WebSocket
+        const socket = new WebSocket('ws://'+window.location.host+"/api/lyrics");
+
+        // Fonction pour afficher les paroles et les timestamps
+        function afficherKaraoke(data) {
+            const karaokeDiv = document.getElementById('karaoke');
+            karaokeDiv.innerHTML = ''; // Effacer le contenu précédent
+
+            // Parcourir les résultats du karaoké
+            if (data.results.LYRICS_SYNC_JSON) {
+            data.results.LYRICS_SYNC_JSON.forEach((item) => {
+                if (item.lrc_timestamp) {
+
+                    const timestamp = item.lrc_timestamp.slice(1, -1); // Supprimer les crochets
+                    const lyrics = item.line;
+                    
+                    // Créer un élément span pour chaque ligne de karaoké avec le timestamp comme ID
+                    const span = document.createElement('div');
+                    span.textContent = lyrics;
+                    span.className = "lyric"
+                    span.id = timestamp;
+                    karaokeDiv.appendChild(span);
+                }
+                else {
+                    const span = document.createElement('div');
+                    span.className = "lyric"
+                    span.innerHTML = "<br/> "
+                    karaokeDiv.appendChild(span);
+                    console.log('Cannot read ' + item)
+                }
+            });
+        }
+        else if (data.results.LYRICS_TEXT) {
+            data.results.LYRICS_TEXT.split("\n").forEach(l => {
+            const span = document.createElement('div');
+                    span.textContent = l;
+                    span.className = "lyric"
+                    span.id = 0;
+                    karaokeDiv.appendChild(span);
+            })
+        }
+        }
+
+        
+// Fonction pour avancer la ligne de karaoké en fonction du temps écoulé
+function avancerKaraoke(data) {
+    const karaokeDiv = document.getElementById('karaoke');
+
+    let currentTime = 0; // Temps écoulé en millisecondes
+
+    // Parcourir les résultats du karaoké
+    if (data.results.LYRICS_SYNC_JSON)
+    data.results.LYRICS_SYNC_JSON.forEach((item) => {
+        if (item.lrc_timestamp) {
+        const timestamp = parseInt(item.milliseconds); // Temps en millisecondes
+        const duration = parseInt(item.duration); // Temps en millisecondes
+        const lyrics = item.line;
+
+        const timestampId = item.lrc_timestamp.slice(1, -1); // Supprimer les crochets
+                    
+
+        // Mettre à jour le karaoké après le temps écoulé
+        timeouts.push(setTimeout(() => {
+            // Supprimer la classe active des éléments précédents
+            const elements = karaokeDiv.querySelectorAll('.active');
+            elements.forEach(element => {
+                element.classList.remove('active');
+                element.classList.add('doneActive');
+            });
+
+            durationLine = duration
+            startLine = Date.now()
+
+            // Ajouter la classe active à la ligne actuelle
+            const currentLine = document.getElementById(timestampId);
+            if (currentLine && timestampId) {
+                currentLine.classList.add('active');
+                currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Faire défiler la page jusqu'à la ligne actuelle
+            }
+            
+            timeouts.push(setTimeout(() => {
+                elements.forEach(element => {
+                    element.classList.remove('active');
+                    element.classList.add('doneActive');
+                });
+            }, duration))
+        }, timestamp-200));
+
+        currentTime = timestamp; // Mettre à jour le temps écoulé
+    }
+    });
+}
+
+
+// Fonction pour démarrer le karaoké
+function demarrerKaraoke(data) {
+    for (var i=0; i<timeouts.length; i++) {
+  clearTimeout(timeouts[i]);
+}
+for (var i=0; i<intervals.length; i++) {
+  clearInterval(intervals[i]);
+}
+
+    // Afficher le karaoké initial
+    afficherKaraoke(data);
+    const currentLine = document.getElementById("paroles");
+            if (currentLine) {
+                currentLine.classList.add('active');
+                currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Faire défiler la page jusqu'à la ligne actuelle
+            }
+    // Avancer le karaoké au fur et à mesure du temps écoulé
+    avancerKaraoke(data);
+
+     // Démarrer la progression de la barre
+     demarrerProgression(data);
+}
+
+
+
+ // Fonction pour démarrer la progression de la barre
+ function demarrerProgression(data) {
+    if (data.results.LYRICS_SYNC_JSON) {
+            const progressBar = document.getElementById('progress-bar');
+            const progressLineBar = document.getElementById('progress-line');
+            const totalDuration = data.results.LYRICS_SYNC_JSON.reduce((total, item) => {
+                if (item.duration && item.milliseconds) {
+                    return Math.max(total, parseInt(item.milliseconds) + parseInt(item.duration));
+                }
+                return total;
+            }, 0);
+            let start = Date.now()
+            let progress = 0;
+            console.log(totalDuration)
+            const interval = setInterval(() => {
+                progress = Date.now() - start
+
+                progressLine = Date.now() - startLine
+                const percentage = (progress / totalDuration) * 100;
+                progressBar.style.width = percentage + '%';
+                if (progress >= totalDuration) {
+                    clearInterval(interval);
+                }
+                const percentageLine = (progressLine / durationLine) * 100;
+                progressLineBar.style.width = percentageLine + '%';
+                
+            }, 50);
+            intervals.push(interval)
+        }
+        }
+
+// Écouter les messages WebSocket
+socket.addEventListener('message', function (event) {
+    const data = JSON.parse(event.data);
+    if (data.results) {
+        demarrerKaraoke(data);
+    } else if (data.song) {
+        document.getElementById('paroles').innerText = data.song + " - " + data.artist;
+        document.getElementById('cover').src = data.url;
+    }
+     else {
+        console.error('Erreur :', data.error);
+    }
+});
+
+    </script>
+</body>
+</html>

@@ -186,7 +186,7 @@ public class Heos {
                         System.out.println("Search alternative Lyrics");
                         HttpRequest searchSong = HttpRequest.newBuilder()
                                 .GET()
-                                .uri(URI.create("https://api.deezer.com/search?q="+URLEncoder.encode(song, Charset.defaultCharset())))
+                                .uri(URI.create("https://api.deezer.com/search?q="+URLEncoder.encode(artist + " " + song, Charset.defaultCharset())))
                                 .build();
                         HttpResponse<String> repSearch = client.send(searchSong, BodyHandlers.ofString());
                         if (repSearch.statusCode() == 200) {

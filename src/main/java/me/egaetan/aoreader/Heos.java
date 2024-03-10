@@ -1,5 +1,6 @@
 package me.egaetan.aoreader;
 
+import java.awt.Desktop;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -10,6 +11,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.net.http.HttpClient;
@@ -61,7 +63,9 @@ public class Heos {
     
     static Consumer<String> publish = __ -> {};
     static ObjectMapper mapper = new ObjectMapper();
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException, InterruptedException, URISyntaxException {
+        stopRunning();
+
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         List<Device> discover = discover(5_100, "urn:schemas-denon-com:device:ACT-Denon:1");
         discover.forEach(x -> System.out.println(x));
@@ -74,8 +78,10 @@ public class Heos {
         
         start(marrantz);
         
+        
         Javalin app = Javalin.create(config -> {
-            config.staticFiles.add("src/main/resources/public", Location.EXTERNAL);
+            //config.staticFiles.add("src/main/resources/public", Location.EXTERNAL);
+            config.staticFiles.add("/public", Location.CLASSPATH);
         });
         
         app.ws("/api/lyrics", ctx -> {
@@ -92,10 +98,21 @@ public class Heos {
                 };
             });
         });
-        
+        app.get("/exit", h-> {System.exit(0);});
         app.start(8095);
-                
         
+        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            Desktop.getDesktop().browse(new URI("http://localhost:8095"));
+        }
+    }
+
+    private static void stopRunning() throws IOException, InterruptedException {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            client.send(HttpRequest.newBuilder(URI.create("http://localhost:8095/exit")).build(), BodyHandlers.discarding());
+        } catch (IOException | InterruptedException e) {
+            // discard
+        }
     }
     
     public static class DeezerCsrf {

@@ -5,16 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Karaoke</title>
     <style>
+        body::-webkit-scrollbar {
+             display: none;
+        }
         #karaoke {
-            font-size: 5em;
+            font-size: 5rem;
             text-align: center;
             padding: 20px;
             z-index: 1; /* Pour placer devant la barre de progression */
+            text-shadow: rgb(209, 233, 255) 1px 1px 4px, #fff 1px 1px 6px,  #fff 0px 0px 5px;
         }
         .active {
-            font-size: 6rem;
+            font-size: 5.5rem;
             font-weight: bold; /* Par exemple, mettre en gras */
-         
+            background-color: #fffc;
+        }
+        .lyric {
+            background-color: #fffa;
+            width: fit-content;
+            margin: auto;
         }
         #progress-line {
             position: fixed;
@@ -22,8 +31,8 @@
             left: 0;
             width: 100%;
             height: 2em;
-            background-color: #caf; /* Couleur de la barre de progression */
-            z-index: -1; /* Pour placer en arrière-plan du texte */
+            background-color: rgb(150, 150, 179); /* Couleur de la barre de progression */
+            z-index: 1;
         }
         .doneActive {
             color: #999;
@@ -35,15 +44,16 @@
             width: 100%;
             height: 2em;
             background-color: #ccc; /* Couleur de la barre de progression */
-            z-index: -1; /* Pour placer en arrière-plan du texte */
+            z-index: 3; /* Pour placer en arrière-plan du texte */
         }
     </style>
 </head>
 <body>
     <div>
-        <h2 id="paroles">Paroles</h2>
+        <br/>
+        <img id="cover" style="position: fixed; z-index: -1;">
+        <h1 style="text-align: end;z-index: 10;" id="paroles">Paroles</h1>
     </div>
-    <img id="cover">
     <div id="karaoke"></div>
     <div id="progress-bar"></div>
     <div id="progress-line"></div>
@@ -85,6 +95,11 @@
                     console.log('Cannot read ' + item)
                 }
             });
+            const span = document.createElement('div');
+                    span.className = "lyric"
+                    span.innerHTML = "<br/> "
+                    karaokeDiv.appendChild(span);
+                    
         }
         else if (data.results.LYRICS_TEXT) {
             data.results.LYRICS_TEXT.split("\n").forEach(l => {
@@ -131,6 +146,7 @@ function avancerKaraoke(data) {
             const currentLine = document.getElementById(timestampId);
             if (currentLine && timestampId) {
                 currentLine.classList.add('active');
+                console.log("active => " + currentLine.id)
                 currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Faire défiler la page jusqu'à la ligne actuelle
             }
             
@@ -161,7 +177,6 @@ for (var i=0; i<intervals.length; i++) {
     afficherKaraoke(data);
     const currentLine = document.getElementById("paroles");
             if (currentLine) {
-                currentLine.classList.add('active');
                 currentLine.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Faire défiler la page jusqu'à la ligne actuelle
             }
     // Avancer le karaoké au fur et à mesure du temps écoulé
@@ -199,7 +214,7 @@ for (var i=0; i<intervals.length; i++) {
                 const percentageLine = (progressLine / durationLine) * 100;
                 progressLineBar.style.width = percentageLine + '%';
                 
-            }, 50);
+            }, 20);
             intervals.push(interval)
         }
         }

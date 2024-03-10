@@ -49,10 +49,10 @@
 					<!-- MainClass in mainfest make a executable jar -->
 					<archive>
 						<manifest>
-							<mainClass>me.egaetan.aoreader.AOXLReader</mainClass>
+							<mainClass>me.egaetan.aoreader.Heos</mainClass>
 						</manifest>
 					</archive>
-					<finalName>aoReader</finalName>
+					<finalName>heosKaraoke</finalName>
 				</configuration>
 				<executions>
 					<execution>
